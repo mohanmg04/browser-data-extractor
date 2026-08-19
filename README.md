@@ -22,6 +22,7 @@ Browser data extraction and forensic analysis for authorized security research a
 | `brave`    | Brave Browser            |
 | `chromium` | Chromium                 |
 | `cft`      | Chrome for Testing       |
+| `firefox`  | Mozilla Firefox          |
 
 ---
 
@@ -35,12 +36,11 @@ Browser data extraction and forensic analysis for authorized security research a
 
 ## Encryption Support
 
-| Version | Method                          | Privilege Needed |
-|---------|---------------------------------|------------------|
-| v10     | DPAPI (current-user scope)      | Normal user      |
-| v20     | App-Bound Encryption (ABE)      | Administrator / SYSTEM |
-
-Chrome 127+ uses v20 (App-Bound Encryption) by default. `chrome_xtract.py` handles the full two-round DPAPI + NCrypt + AES-GCM decryption chain required for v20 blobs.
+| Version          | Method                               | Privilege Needed    |
+|------------------|--------------------------------------|---------------------|
+| Chromium v10     | DPAPI (current-user scope)           | Normal user         |
+| Chromium v20     | App-Bound Encryption (ABE)           | Administrator / SYSTEM |
+| Firefox          | NSS / PK11SDR_Decrypt via nss3.dll   | Normal user         |
 
 ---
 
@@ -72,7 +72,7 @@ python chrome_xtract.py -Browser <browser> [options]
 
 | Argument      | Required | Description                                       |
 |---------------|----------|---------------------------------------------------|
-| `-Browser`    | Yes      | `chrome` / `edge` / `brave` / `chromium` / `cft` |
+| `-Browser`    | Yes      | `chrome` / `edge` / `brave` / `chromium` / `cft` / `firefox` |
 | `-Output`     | No       | Save output to file (`.json` / `.csv` / `.txt`)   |
 | `-Verbose`    | No       | Enable verbose / debug output                     |
 | `-HideBanner` | No       | Suppress the ASCII banner                         |
@@ -84,24 +84,29 @@ python chrome_xtract.py -Browser <browser> [options]
 python chrome_xtract.py -Browser chrome
 ```
 
-**2. Extract from Edge — save as JSON**
+**2. Extract passwords from Firefox**
+```bash
+python chrome_xtract.py -Browser firefox
+```
+
+**3. Extract from Edge — save as JSON**
 ```bash
 python chrome_xtract.py -Browser edge -Output passwords.json
 ```
 
-**3. Extract from Brave — save as CSV**
+**4. Extract from Brave — save as CSV**
 ```bash
 python chrome_xtract.py -Browser brave -Output passwords.csv
 ```
 
-**4. Extract from Chrome — save as TXT**
+**5. Extract from Chrome — save as TXT**
 ```bash
 python chrome_xtract.py -Browser chrome -Output passwords.txt
 ```
 
-**5. Verbose run, suppress banner**
+**6. Verbose run, suppress banner**
 ```bash
-python chrome_xtract.py -Browser chromium -Verbose -HideBanner
+python chrome_xtract.py -Browser firefox -Verbose -HideBanner
 ```
 
 ---
