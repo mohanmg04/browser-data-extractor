@@ -86,20 +86,28 @@ python chrome_xtract.py -Browser <browser> [options]
 
 ### Examples
 
+**1. Extract everything from Chrome**
 ```bash
-# Extract everything from Chrome
 python chrome_xtract.py -Browser chrome
+```
 
-# Passwords and cookies from Edge only
+**2. Passwords and cookies from Edge only**
+```bash
 python chrome_xtract.py -Browser edge -Type passwords,cookies
+```
 
-# Full forensic dump from Brave — save as JSON
+**3. Full forensic dump from Brave — save as JSON**
+```bash
 python chrome_xtract.py -Browser brave -Type all -Output report.json
+```
 
-# History and bookmarks — save as CSV
+**4. History and bookmarks — save as CSV**
+```bash
 python chrome_xtract.py -Browser chrome -Type history,bookmarks -Output out.csv
+```
 
-# Verbose run, suppress banner
+**5. Verbose run, suppress banner**
+```bash
 python chrome_xtract.py -Browser chromium -Type all -Verbose -HideBanner
 ```
 
