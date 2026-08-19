@@ -25,17 +25,11 @@ Browser data extraction and forensic analysis for authorized security research a
 
 ---
 
-## Extracted Data Types
+## Extracted Data
 
-| Type        | Source DB / File  | Description                              |
-|-------------|-------------------|------------------------------------------|
-| `passwords` | `Login Data`      | Saved usernames and decrypted passwords  |
-| `cookies`   | `Network/Cookies` | Session, auth, and tracking cookies      |
-| `history`   | `History`         | Last 2000 visited URLs with timestamps   |
-| `downloads` | `History`         | Download records with source URLs        |
-| `bookmarks` | `Bookmarks`       | All bookmarks with folder paths          |
-| `cards`     | `Web Data`        | Saved credit/debit card numbers          |
-| `all`       | All of above      | Everything in one run                    |
+| Source DB    | Description                             |
+|--------------|-----------------------------------------|
+| `Login Data` | Saved usernames and decrypted passwords |
 
 ---
 
@@ -76,51 +70,50 @@ python chrome_xtract.py -Browser <browser> [options]
 
 ### Arguments
 
-| Argument      | Required | Description                                                   |
-|---------------|----------|---------------------------------------------------------------|
-| `-Browser`    | Yes      | `chrome` / `edge` / `brave` / `chromium` / `cft`             |
-| `-Type`       | No       | Comma-separated types to extract (default: `all`)             |
-| `-Output`     | No       | Save output to file (`.json` / `.csv` / `.txt`)               |
-| `-Verbose`    | No       | Enable verbose / debug output                                 |
-| `-HideBanner` | No       | Suppress the ASCII banner                                     |
+| Argument      | Required | Description                                       |
+|---------------|----------|---------------------------------------------------|
+| `-Browser`    | Yes      | `chrome` / `edge` / `brave` / `chromium` / `cft` |
+| `-Output`     | No       | Save output to file (`.json` / `.csv` / `.txt`)   |
+| `-Verbose`    | No       | Enable verbose / debug output                     |
+| `-HideBanner` | No       | Suppress the ASCII banner                         |
 
 ### Examples
 
-**1. Extract everything from Chrome**
+**1. Extract passwords from Chrome**
 ```bash
 python chrome_xtract.py -Browser chrome
 ```
 
-**2. Passwords and cookies from Edge only**
+**2. Extract from Edge — save as JSON**
 ```bash
-python chrome_xtract.py -Browser edge -Type passwords,cookies
+python chrome_xtract.py -Browser edge -Output passwords.json
 ```
 
-**3. Full forensic dump from Brave — save as JSON**
+**3. Extract from Brave — save as CSV**
 ```bash
-python chrome_xtract.py -Browser brave -Type all -Output report.json
+python chrome_xtract.py -Browser brave -Output passwords.csv
 ```
 
-**4. History and bookmarks — save as CSV**
+**4. Extract from Chrome — save as TXT**
 ```bash
-python chrome_xtract.py -Browser chrome -Type history,bookmarks -Output out.csv
+python chrome_xtract.py -Browser chrome -Output passwords.txt
 ```
 
 **5. Verbose run, suppress banner**
 ```bash
-python chrome_xtract.py -Browser chromium -Type all -Verbose -HideBanner
+python chrome_xtract.py -Browser chromium -Verbose -HideBanner
 ```
 
 ---
 
 ## Output Formats
 
-| Format  | Extension | Notes                                       |
-|---------|-----------|---------------------------------------------|
-| JSON    | `.json`   | Structured by type; best for further parsing|
-| CSV     | `.csv`    | Flat; all types in one sheet                |
-| Text    | `.txt`    | Human-readable; sectioned by type           |
-| Console | —         | Formatted tables printed to stdout          |
+| Format  | Extension | Notes                                        |
+|---------|-----------|----------------------------------------------|
+| JSON    | `.json`   | Array of password objects; easy to parse     |
+| CSV     | `.csv`    | Profile, URL, Username, Password columns     |
+| Text    | `.txt`    | Human-readable, one entry per block          |
+| Console | —         | Formatted table printed to stdout (default)  |
 
 ---
 
