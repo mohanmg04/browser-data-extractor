@@ -1,0 +1,4 @@
+# browser-data-extractor — Python dependencies
+# Install with: pip install -r requirements.txt
+
+cryptography>=41.0.0
