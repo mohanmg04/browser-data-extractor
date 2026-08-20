@@ -1,12 +1,12 @@
 # browser-data-extractor
 
-Browser data extraction and forensic analysis for authorized security research and laboratory environments.
+Browser password extraction for authorized security research and laboratory environments.
 
 ---
 
 ## Overview
 
-`chrome_xtract.py` is a Python-based forensic extractor for Chromium-based browsers on Windows. It extracts stored credentials, cookies, browsing history, bookmarks, saved cards, and download records from browser profiles — supporting both legacy DPAPI (v10) and App-Bound Encryption (v20 / ABE) introduced in Chrome 127+.
+`chrome_xtract.py` is a Python-based password extractor for Windows that supports Google Chrome and Mozilla Firefox. It decrypts and extracts saved credentials from browser profiles — handling both legacy DPAPI (v10) and App-Bound Encryption (v20 / ABE) introduced in Chrome 127+.
 
 > **For authorized penetration testing, red team operations, and security research only.**  
 > Do not use on systems you do not own or have explicit written permission to test.
@@ -15,32 +15,31 @@ Browser data extraction and forensic analysis for authorized security research a
 
 ## Supported Browsers
 
-| Key        | Browser                  |
-|------------|--------------------------|
-| `chrome`   | Google Chrome            |
-| `edge`     | Microsoft Edge           |
-| `brave`    | Brave Browser            |
-| `chromium` | Chromium                 |
-| `cft`      | Chrome for Testing       |
-| `firefox`  | Mozilla Firefox          |
+| Key       | Browser          |
+|-----------|------------------|
+| `chrome`  | Google Chrome    |
+| `firefox` | Mozilla Firefox  |
 
 ---
 
 ## Extracted Data
 
-| Source DB    | Description                             |
-|--------------|-----------------------------------------|
-| `Login Data` | Saved usernames and decrypted passwords |
+| Source              | Description                              |
+|---------------------|------------------------------------------|
+| Chrome `Login Data` | Saved usernames and decrypted passwords  |
+| Firefox `logins.json` | Saved usernames and decrypted passwords |
 
 ---
 
 ## Encryption Support
 
-| Version          | Method                               | Privilege Needed    |
-|------------------|--------------------------------------|---------------------|
-| Chromium v10     | DPAPI (current-user scope)           | Normal user         |
-| Chromium v20     | App-Bound Encryption (ABE)           | Administrator / SYSTEM |
-| Firefox          | NSS / PK11SDR_Decrypt via nss3.dll   | Normal user         |
+| Browser  | Version | Method                             | Privilege Needed       |
+|----------|---------|------------------------------------|------------------------|
+| Chrome   | v10     | DPAPI (current-user scope)         | Normal user            |
+| Chrome   | v20     | App-Bound Encryption (ABE)         | Administrator / SYSTEM |
+| Firefox  | —       | NSS / PK11SDR_Decrypt via nss3.dll | Normal user            |
+
+Chrome 127+ uses v20 (ABE) by default. The script auto-detects the version and handles the full two-round DPAPI + NCrypt + AES-GCM decryption chain automatically.
 
 ---
 
@@ -48,7 +47,8 @@ Browser data extraction and forensic analysis for authorized security research a
 
 - **OS**: Windows 10 / 11
 - **Python**: 3.10+
-- **Privilege**: User-level for v10; **Administrator** for v20 (ABE)
+- **Privilege**: User-level for Firefox and Chrome v10; **Administrator** for Chrome v20 (ABE)
+- **Firefox mode**: Mozilla Firefox must be installed (nss3.dll is loaded from the install directory)
 
 ```
 pip install -r requirements.txt
@@ -70,12 +70,12 @@ python chrome_xtract.py -Browser <browser> [options]
 
 ### Arguments
 
-| Argument      | Required | Description                                       |
-|---------------|----------|---------------------------------------------------|
-| `-Browser`    | Yes      | `chrome` / `edge` / `brave` / `chromium` / `cft` / `firefox` |
-| `-Output`     | No       | Save output to file (`.json` / `.csv` / `.txt`)   |
-| `-Verbose`    | No       | Enable verbose / debug output                     |
-| `-HideBanner` | No       | Suppress the ASCII banner                         |
+| Argument      | Required | Description                                     |
+|---------------|----------|-------------------------------------------------|
+| `-Browser`    | Yes      | `chrome` or `firefox`                           |
+| `-Output`     | No       | Save output to file (`.json` / `.csv` / `.txt`) |
+| `-Verbose`    | No       | Enable verbose / debug output                   |
+| `-HideBanner` | No       | Suppress the ASCII banner                       |
 
 ### Examples
 
@@ -89,50 +89,53 @@ python chrome_xtract.py -Browser chrome
 python chrome_xtract.py -Browser firefox
 ```
 
-**3. Extract from Edge — save as JSON**
+**3. Save Chrome passwords as JSON**
 ```bash
-python chrome_xtract.py -Browser edge -Output passwords.json
+python chrome_xtract.py -Browser chrome -Output passwords.json
 ```
 
-**4. Extract from Brave — save as CSV**
+**4. Save Firefox passwords as CSV**
 ```bash
-python chrome_xtract.py -Browser brave -Output passwords.csv
+python chrome_xtract.py -Browser firefox -Output passwords.csv
 ```
 
-**5. Extract from Chrome — save as TXT**
+**5. Save as TXT**
 ```bash
 python chrome_xtract.py -Browser chrome -Output passwords.txt
 ```
 
 **6. Verbose run, suppress banner**
 ```bash
-python chrome_xtract.py -Browser firefox -Verbose -HideBanner
+python chrome_xtract.py -Browser chrome -Verbose -HideBanner
 ```
 
 ---
 
 ## Output Formats
 
-| Format  | Extension | Notes                                        |
-|---------|-----------|----------------------------------------------|
-| JSON    | `.json`   | Array of password objects; easy to parse     |
-| CSV     | `.csv`    | Profile, URL, Username, Password columns     |
-| Text    | `.txt`    | Human-readable, one entry per block          |
-| Console | —         | Formatted table printed to stdout (default)  |
+| Format  | Extension | Notes                                       |
+|---------|-----------|---------------------------------------------|
+| JSON    | `.json`   | Array of password objects; easy to parse    |
+| CSV     | `.csv`    | Profile, URL, Username, Password columns    |
+| Text    | `.txt`    | Human-readable, one entry per block         |
+| Console | —         | Formatted table printed to stdout (default) |
 
 ---
 
 ## Multi-Profile Support
 
-The tool automatically scans all browser profiles (Default, Profile 1, Profile 2, …) found under the browser's User Data directory and aggregates results across them.
+Both Chrome and Firefox profiles are automatically discovered and scanned. Results from all profiles are aggregated into a single output.
+
+- **Chrome**: scans all directories under `User Data\` that contain a `Login Data` file
+- **Firefox**: scans all directories under `%APPDATA%\Mozilla\Firefox\Profiles\` that contain a `logins.json` file
 
 ---
 
 ## Technical Notes
 
-- Browser SQLite databases are locked while Chrome is running. `chrome_xtract.py` copies each DB to a temp location before querying, then deletes the copy.
-- v20 decryption requires impersonating `NT AUTHORITY\SYSTEM` via `winlogon.exe` token duplication and NCrypt key access. This requires the tool to run as Administrator.
-- Chrome timestamps are stored as microseconds since the Windows/WebKit epoch (1601-01-01). The tool converts these to human-readable UTC strings.
+- Chrome's SQLite `Login Data` is locked while the browser is running. The script copies it to a temp file before querying, then deletes the copy.
+- Chrome v20 decryption requires impersonating `NT AUTHORITY\SYSTEM` via `winlogon.exe` token duplication and NCrypt key access — run as Administrator.
+- Firefox decryption uses `nss3.dll` loaded from the Firefox installation directory. NSS is initialized per-profile and shut down cleanly between profiles.
 
 ---
 
