@@ -6,7 +6,7 @@ Browser password extraction for authorized security research and laboratory envi
 
 ## Overview
 
-`chrome_xtract.py` is a Python-based password extractor for Windows that supports Google Chrome and Mozilla Firefox. It decrypts and extracts saved credentials from browser profiles — handling both legacy DPAPI (v10) and App-Bound Encryption (v20 / ABE) introduced in Chrome 127+.
+`chrome_xtract_win.py` is a Python-based password extractor for **Windows** that supports Google Chrome and Mozilla Firefox. It decrypts and extracts saved credentials from browser profiles — handling both legacy DPAPI (v10) and App-Bound Encryption (v20 / ABE) introduced in Chrome 127+.
 
 > **For authorized penetration testing, red team operations, and security research only.**  
 > Do not use on systems you do not own or have explicit written permission to test.
@@ -15,29 +15,29 @@ Browser password extraction for authorized security research and laboratory envi
 
 ## Supported Browsers
 
-| Key       | Browser          |
-|-----------|------------------|
-| `chrome`  | Google Chrome    |
-| `firefox` | Mozilla Firefox  |
+| Key       | Browser         |
+|-----------|-----------------|
+| `chrome`  | Google Chrome   |
+| `firefox` | Mozilla Firefox |
 
 ---
 
 ## Extracted Data
 
-| Source              | Description                              |
-|---------------------|------------------------------------------|
-| Chrome `Login Data` | Saved usernames and decrypted passwords  |
-| Firefox `logins.json` | Saved usernames and decrypted passwords |
+| Source                  | Description                             |
+|-------------------------|-----------------------------------------|
+| Chrome `Login Data`     | Saved usernames and decrypted passwords |
+| Firefox `logins.json`   | Saved usernames and decrypted passwords |
 
 ---
 
 ## Encryption Support
 
-| Browser  | Version | Method                             | Privilege Needed       |
-|----------|---------|------------------------------------|------------------------|
-| Chrome   | v10     | DPAPI (current-user scope)         | Normal user            |
-| Chrome   | v20     | App-Bound Encryption (ABE)         | Administrator / SYSTEM |
-| Firefox  | —       | NSS / PK11SDR_Decrypt via nss3.dll | Normal user            |
+| Browser | Version | Method                              | Privilege Needed        |
+|---------|---------|-------------------------------------|-------------------------|
+| Chrome  | v10     | DPAPI (current-user scope)          | Normal user             |
+| Chrome  | v20     | App-Bound Encryption (ABE)          | Administrator / SYSTEM  |
+| Firefox | --      | NSS / PK11SDR_Decrypt via nss3.dll  | Normal user             |
 
 Chrome 127+ uses v20 (ABE) by default. The script auto-detects the version and handles the full two-round DPAPI + NCrypt + AES-GCM decryption chain automatically.
 
@@ -65,7 +65,7 @@ pip install cryptography
 ## Usage
 
 ```
-python chrome_xtract.py -Browser <browser> [options]
+python chrome_xtract_win.py -Browser <browser> [options]
 ```
 
 ### Arguments
@@ -81,32 +81,32 @@ python chrome_xtract.py -Browser <browser> [options]
 
 **1. Extract passwords from Chrome**
 ```bash
-python chrome_xtract.py -Browser chrome
+python chrome_xtract_win.py -Browser chrome
 ```
 
 **2. Extract passwords from Firefox**
 ```bash
-python chrome_xtract.py -Browser firefox
+python chrome_xtract_win.py -Browser firefox
 ```
 
 **3. Save Chrome passwords as JSON**
 ```bash
-python chrome_xtract.py -Browser chrome -Output passwords.json
+python chrome_xtract_win.py -Browser chrome -Output passwords.json
 ```
 
 **4. Save Firefox passwords as CSV**
 ```bash
-python chrome_xtract.py -Browser firefox -Output passwords.csv
+python chrome_xtract_win.py -Browser firefox -Output passwords.csv
 ```
 
 **5. Save as TXT**
 ```bash
-python chrome_xtract.py -Browser chrome -Output passwords.txt
+python chrome_xtract_win.py -Browser chrome -Output passwords.txt
 ```
 
 **6. Verbose run, suppress banner**
 ```bash
-python chrome_xtract.py -Browser chrome -Verbose -HideBanner
+python chrome_xtract_win.py -Browser chrome -Verbose -HideBanner
 ```
 
 ---
@@ -118,7 +118,7 @@ python chrome_xtract.py -Browser chrome -Verbose -HideBanner
 | JSON    | `.json`   | Array of password objects; easy to parse    |
 | CSV     | `.csv`    | Profile, URL, Username, Password columns    |
 | Text    | `.txt`    | Human-readable, one entry per block         |
-| Console | —         | Formatted table printed to stdout (default) |
+| Console | --        | Formatted table printed to stdout (default) |
 
 ---
 
@@ -153,4 +153,4 @@ Unauthorized use against systems you do not own or have explicit permission to t
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+MIT -- see [LICENSE](LICENSE)
